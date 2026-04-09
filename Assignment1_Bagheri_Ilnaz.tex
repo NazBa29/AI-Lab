@@ -1,0 +1,113 @@
+\documentclass[12pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{setspace}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{caption}
+\usepackage{hyperref}
+\usepackage{float}
+
+\onehalfspacing
+
+\title{\textbf{BANA 290 -- Assignment 1} \\[6pt]
+       \large Causal Impact of AI Adoption on Firm Revenue Growth:\\
+       A Propensity Score Matching Analysis}
+\author{Ilnaz Bagheri}
+
+
+\begin{document}
+\maketitle
+
+% -------------------------------------------------------
+\section{Data Overview}
+
+The dataset was scraped from the North American Fintech \& Financial Services Directory (\url{https://bana290-assignment1.netlify.app/}), containing 114 firm profiles across seven segments. After excluding firms with ambiguous AI status labels (e.g., ``Pilot,'' ``In Review,'' ``Unknown'') and missing revenue growth values, after cleaning, I ended up with 89 firms that had both a clear AI status and reported revenue growth: 46 classified as AI Adopted ($\text{AI}=1$) and 43 as Not Adopted ($\text{AI}=0$). AI adoption was coded as binary, where labels such as \textit{Yes}, \textit{Adopted}, \textit{AI Enabled}, \textit{Live}, and \textit{Production} were mapped to 1, while \textit{No}, \textit{Not Yet}, \textit{Legacy Only}, and \textit{Manual Only} were mapped to 0.
+
+% -------------------------------------------------------
+\section{Results}
+
+\subsection{Naive OLS (Baseline)}
+
+A simple OLS regression of revenue growth on AI adoption yielded:
+\[
+  \hat{\beta}_{\text{AI}} = 5.16 \text{ pp}, \quad p < 0.001, \quad R^2 = 0.39
+\]
+This suggests that AI-adopting firms grew approximately 5.16 percentage points faster than non-adopters. However, the problem with this number is that bigger companies tend to both adopt AI and grow faster. So, we can't tell if AI is actually causing the growth, as larger, better-funded, and more digitally mature firms are both more likely to adopt AI \emph{and} to exhibit faster growth.
+
+\subsection{Propensity Score Estimation}
+
+Propensity scores were estimated using logistic regression on four pre-treatment covariates: log annual revenue, firm age, team size, and digital sales percentage. The fitted propensity scores were used to construct a 1:1 nearest-neighbor matched sample.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\textwidth]{fig_common_support.png}
+  \caption{Propensity score distributions for AI-adopting (red) and non-adopting (blue) firms. Substantial overlap confirms that the common support assumption is satisfied.}
+\end{figure}
+
+\subsection{Common Support}
+
+Figure~1 displays the propensity score distributions for both groups. The distributions overlap substantially across the full $[0,1]$ range, confirming that the \textbf{common support assumption is satisfied}. There is no evidence of mass concentration at 0 or 1, nor of disjoint score regions, indicating that a valid comparison group exists for all treated firms.
+
+\subsection{Balancing Property}
+
+Table~1 reports the Standardized Mean Difference (SMD) for each covariate before and after nearest-neighbor matching. Figure~2 (Love Plot) visualizes these results.
+
+\begin{table}[H]
+  \centering
+  \caption{Standardized Mean Differences Before and After PSM}
+  \begin{tabular}{lcc}
+    \toprule
+    \textbf{Covariate} & \textbf{SMD Before} & \textbf{SMD After} \\
+    \midrule
+    Log Annual Revenue & 0.627 & --0.001 \\
+    Firm Age (years)   & 0.157 & \phantom{-}0.420 \\
+    Team Size          & 0.541 & \phantom{-}0.185 \\
+    Digital Sales (\%) & 0.614 & --0.066 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\textwidth]{fig_love_plot.png}
+  \caption{Love Plot showing absolute SMD before (red circles) and after (blue diamonds) matching. The dashed line marks the conventional 0.10 threshold.}
+\end{figure}
+
+Three of the four covariates achieved balance below the conventional $|SMD| < 0.10$ threshold after matching: log revenue (0.001), digital sales (0.066), and team size (0.185, slightly above threshold). The single exception is firm age, whose post-matching SMD of 0.420 indicates that matched pairs still differ systematically by age. This represents a limitation of the current matching procedure; a caliper or exact-matching strategy on firm age could further improve balance.
+
+\subsection{PSM-Adjusted Estimate and Interpretation}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.6\textwidth]{fig_coef_comparison.png}
+  \caption{Comparison of naive and PSM-adjusted coefficients on AI adoption.}
+\end{figure}
+
+After nearest-neighbor matching (92 matched observations), the post-PSM OLS estimate was:
+\[
+  \hat{\beta}_{\text{AI}}^{\text{PSM}} = 3.60 \text{ pp}, \quad p < 0.001, \quad R^2 = 0.26
+\]
+
+A Welch's two-sample $t$-test on the matched sample confirmed a mean revenue growth difference of 3.60 pp ($t = 5.59$, $p < 0.001$), consistent with the OLS result.
+
+% -------------------------------------------------------
+\section{Interpretation}
+
+\subsection{How did the AI coefficient change after PSM?}
+
+The AI adoption coefficient fell from \textbf{5.16 pp} (naive) to \textbf{3.60 pp} (PSM-adjusted), a reduction of approximately 1.56 percentage points---or roughly 30\% of the original estimate. Both estimates remain statistically significant at the 0.1\% level.
+
+\subsection{What does this shift suggest about selection bias?}
+
+After applying PSM, the coefficient dropped from 5.16 to 3.60, indicating that the naive estimate was inflated. Firms that adopted AI in this sample tended to be larger (higher revenue), more digitally mature (higher digital sales), and better staffed (larger teams)---precisely the characteristics associated with faster growth regardless of AI. The naive OLS inflated the apparent benefit of AI by attributing to it pre-existing advantages. PSM corrects for this by comparing treated and control firms that are comparable on observable covariates, yielding a more credible estimate of the average treatment effect on the treated (ATT). The remaining positive effect of 3.60 pp suggests that AI adoption does provide a genuine, causal boost to revenue growth, net of selection.
+
+\subsection{Validity of Common Support}
+
+The common support assumption is \textbf{satisfied}. Propensity score distributions for both groups overlap across the full range, with no stacking near 0 or 1. This means there are comparable control firms for every treated firm and the matching procedure rests on valid counterfactual comparisons.
+
+\subsection{Validity of Balancing Assumption}
+
+The balancing assumption is \textbf{partially satisfied}. Three of four covariates achieved near-zero SMD post-matching. Firm age, however, remained imbalanced ($|SMD| = 0.42$), suggesting the matched sample does not fully equate firms on age. Future analyses could apply a caliper of 0.05 standard deviations on propensity scores, or include firm age as a control covariate in the post-matching regression, to address this residual imbalance.
+
+\end{document}
